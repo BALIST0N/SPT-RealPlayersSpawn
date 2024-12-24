@@ -100,7 +100,7 @@ class RealPlayersSpawns
                 break;
 
             }
-            
+        }
     }
 }
 
