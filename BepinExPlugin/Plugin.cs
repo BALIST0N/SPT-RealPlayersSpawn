@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using BepInEx;
 using EFT;
 using EFT.Game.Spawning;
+using EFT.UI;
 using HarmonyLib;
 using SPT.Reflection.Patching;
 using UnityEngine;
@@ -39,10 +40,7 @@ namespace RealPlayerSpawnPlugin
         //the value must be fixed the first time and never written except on reset
         public static void SetPlayerSpawnPoint(ISpawnPoint isp)
         {
-            if (playerSpawnPoint == null) 
-            {
-                playerSpawnPoint = isp;
-            }
+            if (playerSpawnPoint == null){ playerSpawnPoint = isp; }
         }
     }
 
@@ -50,10 +48,10 @@ namespace RealPlayerSpawnPlugin
     [BepInDependency("com.SPT.custom", "3.10.0")]
     public  class RealPlayerSpawn : BaseUnityPlugin
     {
-
         private void Awake()
         {
-            new ModifyLocalGame().Enable();
+
+            new GetLocationDataFromBaseLocalGame().Enable();
             new ChangePmcSpawnWaves().Enable();
             new ChangePmcSpawnpoints().Enable();
             new GetPlayerSpawnPoint().Enable();
@@ -61,12 +59,11 @@ namespace RealPlayerSpawnPlugin
         }
     }
 
-    public class ModifyLocalGame : ModulePatch
+    public class GetLocationDataFromBaseLocalGame : ModulePatch
     {
         protected override MethodBase GetTargetMethod()
         {
-            //right before you get the countdown before a raid, all info are created, ai are frozen, player haven't spawn
-            return AccessTools.Method(typeof(LocalGame), "method_21"); 
+            return AccessTools.Method(typeof(BaseLocalGame<EftGamePlayerOwner>), "method_11");
         }
 
         [PatchPostfix]
@@ -76,10 +73,6 @@ namespace RealPlayerSpawnPlugin
 
             pluginSharedValues.min_PMCs = __instance.Location_0.MinPlayers;
             pluginSharedValues.max_PMCs = __instance.Location_0.MaxPlayers;
-
-
-            //consider delete the player spawn of the array of possible spawns
-            //ConsoleScreen.Log( "playerspawnParams in  array ? " + Array.FindIndex(pluginSharedValues.pmcSpawns , pmcspawn => pmcspawn.Id == pluginSharedValues.playerSpawnPoint.Id) );
 
             ///research about spawn points : 
             ///only 3 EplayermMaskSides is used : "PMC", "savage", "all" 
@@ -119,7 +112,6 @@ namespace RealPlayerSpawnPlugin
         {
             bool found = false;
             List<WildSpawnWave> wavesList = waves.ToList();
-
             for (int i = wavesList.Count- 1; i >= 0; i--) 
             {
                 if (wavesList[i].isPlayers == true )
@@ -129,13 +121,15 @@ namespace RealPlayerSpawnPlugin
                         found = true;
                         if( location != null)
                         {
+                            //wavesList[i].slots_min = 0;
                             wavesList[i].slots_min = location.MinPlayers - 1; //-1 because you must count yourself : ) 
                             wavesList[i].slots_max = location.MaxPlayers - 1;
                         }
                         else
                         {
+                            //wavesList[i].slots_min = 0;
                             wavesList[i].slots_min = pluginSharedValues.min_PMCs - 1;
-                            wavesList[i].slots_min = pluginSharedValues.min_PMCs - 1;
+                            wavesList[i].slots_max = pluginSharedValues.max_PMCs - 1;
                         }
                         wavesList[i].time_min = 0;
                         wavesList[i].time_max = 120;
@@ -166,8 +160,9 @@ namespace RealPlayerSpawnPlugin
         {
             if ( data.Profiles[0].Side != EPlayerSide.Savage)
             {
+
                 //this way there is less players, so less loot but easier to survive
-                if( pluginSharedValues.pmc_spawned + data.Profiles.Count > pluginSharedValues.max_PMCs )
+                if ( pluginSharedValues.pmc_spawned + data.Profiles.Count > pluginSharedValues.max_PMCs )
                 {
                     return false;
                 }
@@ -190,7 +185,7 @@ namespace RealPlayerSpawnPlugin
                 }
                */
 
-                //get a spawnpoint just like a real player, spawnsystemclass instance get at  GetPlayerSpawnPoint modulepatch
+                //get a spawnpoint just like a real player, spawnsystemclass instance get at GetPlayerSpawnPoint modulepatch
                 ISpawnPoint isp = pluginSharedValues.spawnSystemClass.SelectSpawnPoint(ESpawnCategory.Player, data.Profiles[0].Side);
                 
                 //prevent spawn at the same spawn as player
@@ -213,7 +208,7 @@ namespace RealPlayerSpawnPlugin
                         Sides = isp.Sides
                     };
                     pluginSharedValues.pmc_spawned++;
-                    Logger.LogInfo("pmc spawned : " + data.Profiles[i].Nickname + " (" + (i+1) + "/" + data.Profiles.Count + ") count : " + pluginSharedValues.pmc_spawned + " position :" + openedPositions[i].Position.WideLog());
+                    //ConsoleScreen.Log("pmc spawned : " + data.Profiles[i].Nickname + " (" + (i+1) + "/" + data.Profiles.Count + ") count : " + pluginSharedValues.pmc_spawned + " position :" + openedPositions[i].Position.WideLog());
                 }
 
             }
