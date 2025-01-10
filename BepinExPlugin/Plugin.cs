@@ -78,7 +78,7 @@ namespace RealPlayerSpawnPlugin
             else
             {
                 pluginSharedValues.max_PMCs = UnityEngine.Random.Range(0, __instance.Location_0.MaxPlayers);
-                pluginSharedValues.min_PMCs = pluginSharedValues.max_PMCs / 2;
+                pluginSharedValues.min_PMCs = 0;
             }
 
 
@@ -128,16 +128,25 @@ namespace RealPlayerSpawnPlugin
                     if (found == false)
                     {
                         found = true;
-                        if( location != null)
+                        if( location != null || pluginSharedValues.isScavRun == false)
                         {
 
                             wavesList[i].slots_max = location.MaxPlayers - 1;
-                            wavesList[i].slots_min = location.MaxPlayers / 2; 
+                            wavesList[i].slots_min = location.MaxPlayers / 2;
                         }
                         else
                         {
-                            wavesList[i].slots_min = pluginSharedValues.min_PMCs - 1;
-                            wavesList[i].slots_max = pluginSharedValues.max_PMCs - 1;
+                            if(pluginSharedValues.isScavRun == true )
+                            {
+                                wavesList[i].slots_min = pluginSharedValues.min_PMCs;
+                                wavesList[i].slots_max = pluginSharedValues.max_PMCs;
+                            }
+                            else
+                            {
+                                wavesList[i].slots_min = pluginSharedValues.min_PMCs - 1;
+                                wavesList[i].slots_max = pluginSharedValues.max_PMCs - 1;
+                            }
+
                         }
                         wavesList[i].time_min = 0;
                         wavesList[i].time_max = 120;
@@ -168,15 +177,16 @@ namespace RealPlayerSpawnPlugin
         {
             if ( data.Profiles[0].Side != EPlayerSide.Savage)
             {
-                if (pluginSharedValues.isScavRun == true)
-                {
-                    return true; //don't modify spawns for scav raids
-                }
-
                 //this way there is less players, so less loot but easier to survive
                 if ( pluginSharedValues.pmc_spawned + data.Profiles.Count > pluginSharedValues.max_PMCs )
                 {
                     return false;
+                }
+
+                if (pluginSharedValues.isScavRun == true)
+                {
+                    pluginSharedValues.pmc_spawned += data.Profiles.Count;
+                    return true; //don't modify spawns for scav raids
                 }
 
                 /*
@@ -220,7 +230,7 @@ namespace RealPlayerSpawnPlugin
                         Sides = isp.Sides
                     };
                     pluginSharedValues.pmc_spawned++;
-                    EFT.UI.ConsoleScreen.Log("pmc spawned : " + data.Profiles[i].Nickname + " (" + (i+1) + "/" + data.Profiles.Count + ") count : " + pluginSharedValues.pmc_spawned + " position :" + openedPositions[i].Position.WideLog());
+                    //EFT.UI.ConsoleScreen.Log("pmc spawned : " + data.Profiles[i].Nickname + " (" + (i+1) + "/" + data.Profiles.Count + ") count : " + pluginSharedValues.pmc_spawned + " position :" + openedPositions[i].Position.WideLog());
                 }
 
             }
