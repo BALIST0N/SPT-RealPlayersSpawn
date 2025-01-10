@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using BepInEx;
 using EFT;
 using EFT.Game.Spawning;
-using EFT.UI;
 using HarmonyLib;
 using SPT.Reflection.Patching;
 using UnityEngine;
@@ -44,7 +43,7 @@ namespace RealPlayerSpawnPlugin
         }
     }
 
-    [BepInPlugin("RealPlayerSpawn.UniqueGUID", "RealPlayerSpawn", "1.0.0")]
+    [BepInPlugin("RealPlayerSpawn.UniqueGUID", "RealPlayerSpawn", "1.2.0")]
     [BepInDependency("com.SPT.custom", "3.10.0")]
     public  class RealPlayerSpawn : BaseUnityPlugin
     {
@@ -71,8 +70,17 @@ namespace RealPlayerSpawnPlugin
         {
             pluginSharedValues.isScavRun = (__instance.Profile_0.Side == EPlayerSide.Savage);   //that's so elegent ;)
 
-            pluginSharedValues.min_PMCs = __instance.Location_0.MinPlayers;
-            pluginSharedValues.max_PMCs = __instance.Location_0.MaxPlayers;
+            if(pluginSharedValues.isScavRun == false )
+            {
+                pluginSharedValues.max_PMCs = __instance.Location_0.MaxPlayers;
+                pluginSharedValues.min_PMCs = pluginSharedValues.max_PMCs / 2;
+            }
+            else
+            {
+                pluginSharedValues.max_PMCs = UnityEngine.Random.Range(0, __instance.Location_0.MaxPlayers);
+                pluginSharedValues.min_PMCs = pluginSharedValues.max_PMCs / 2;
+            }
+
 
             ///research about spawn points : 
             ///only 3 EplayermMaskSides is used : "PMC", "savage", "all" 
@@ -112,6 +120,7 @@ namespace RealPlayerSpawnPlugin
         {
             bool found = false;
             List<WildSpawnWave> wavesList = waves.ToList();
+
             for (int i = wavesList.Count- 1; i >= 0; i--) 
             {
                 if (wavesList[i].isPlayers == true )
@@ -121,13 +130,12 @@ namespace RealPlayerSpawnPlugin
                         found = true;
                         if( location != null)
                         {
-                            //wavesList[i].slots_min = 0;
-                            wavesList[i].slots_min = location.MinPlayers - 1; //-1 because you must count yourself : ) 
+
                             wavesList[i].slots_max = location.MaxPlayers - 1;
+                            wavesList[i].slots_min = location.MaxPlayers / 2; 
                         }
                         else
                         {
-                            //wavesList[i].slots_min = 0;
                             wavesList[i].slots_min = pluginSharedValues.min_PMCs - 1;
                             wavesList[i].slots_max = pluginSharedValues.max_PMCs - 1;
                         }
@@ -137,7 +145,7 @@ namespace RealPlayerSpawnPlugin
                     }
                     else
                     {
-                        wavesList.RemoveAt(i);
+                        wavesList.RemoveAt(i); //remove the other pmc waves
                     }   
                 }
             }
@@ -160,6 +168,10 @@ namespace RealPlayerSpawnPlugin
         {
             if ( data.Profiles[0].Side != EPlayerSide.Savage)
             {
+                if (pluginSharedValues.isScavRun == true)
+                {
+                    return true; //don't modify spawns for scav raids
+                }
 
                 //this way there is less players, so less loot but easier to survive
                 if ( pluginSharedValues.pmc_spawned + data.Profiles.Count > pluginSharedValues.max_PMCs )
@@ -208,7 +220,7 @@ namespace RealPlayerSpawnPlugin
                         Sides = isp.Sides
                     };
                     pluginSharedValues.pmc_spawned++;
-                    //ConsoleScreen.Log("pmc spawned : " + data.Profiles[i].Nickname + " (" + (i+1) + "/" + data.Profiles.Count + ") count : " + pluginSharedValues.pmc_spawned + " position :" + openedPositions[i].Position.WideLog());
+                    EFT.UI.ConsoleScreen.Log("pmc spawned : " + data.Profiles[i].Nickname + " (" + (i+1) + "/" + data.Profiles.Count + ") count : " + pluginSharedValues.pmc_spawned + " position :" + openedPositions[i].Position.WideLog());
                 }
 
             }
